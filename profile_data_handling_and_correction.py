@@ -18,26 +18,24 @@ def correct_data():
     baddata_dates=[['2013-08-24 00:00:00','2013-11-28 11:58:00'],
                    ['2013-04-10 09:00:00','2013-04-10 15:00:00'],
                    ['2013-06-20 11:30:00','2013-06-20 12:00:00'],                  
-                   ['2014-03-21 10:00:00','2014-03-23 10:00:00']]
+                   ['2014-03-21 10:00:00','2014-03-23 10:00:00'],
+                   ['2014-07-01 00:00:00','2014-07-02 11:36:00']]
     
     # List of dates that need to be transformed due to inappropriate multiplier or offset    
-    badCO2coeff_dates=[['2012-06-28 11:00:00','2012-10-17 12:50:00']]
+    badCO2coeff1_dates=[['2012-06-28 11:00:00','2012-10-17 12:50:00']]
+    badCO2coeff2_dates=[['2014-06-03 00:00:00','2014-07-01 00:00:00']]
     
     # List of dates that need to be transformed due to wrong frequency
     badfreq_dates=['2011-12-02 10:58:00','2012-02-28 12:02:00']    
     
     # Date intervals over which to apply linear transform of data (due to instrument drift)
-    instrument_dates=[['2011-12-02','2012-06-28'],
-                      ['2012-06-28','2012-10-13'],
-                      ['2012-10-13','2013-08-23'],
-        		    ['2013-10-29','2014-06-02']]
-    instrument_times=[['12:00:00','10:58:00'],
-                      ['11:00:00','12:00:00'],
-    			    ['12:02:00','23:58:00'],
-    			    ['12:00:00','23:58:00']]
+    instrument_dates=[['2011-12-02 12:00:00','2012-06-28 10:58:00'],
+                      ['2012-06-28 11:00:00','2012-10-13 12:00:00'],
+                      ['2012-10-13 12:02:00','2013-08-23 23:58:00'],
+        		    ['2013-10-29 12:00:00','2014-06-02 23:58:00']]
 
     # Working variables        
-    coeff_correct=2.5
+    coeff_correct=[2.5,380.0/350]
     true_heights=[0.5,2,4,8,16,32]
     CO2_range=[300,800]
     CO2_base=390
@@ -78,8 +76,10 @@ def correct_data():
     		
     # 2 above
     for i in CO2_cols_list:
-        for j in badCO2coeff_dates:
-            df[i].loc[j[0]:j[1]]=df[i].loc[j[0]:j[1]]*coeff_correct
+        for j in badCO2coeff1_dates:
+            df[i].loc[j[0]:j[1]]=df[i].loc[j[0]:j[1]]*coeff_correct[0]
+        for j in badCO2coeff2_dates:
+            df[i].loc[j[0]:j[1]]=df[i].loc[j[0]:j[1]]*coeff_correct[1]
     		
     # 3 above
     for i in CO2_cols_list:
@@ -105,9 +105,9 @@ def correct_data():
     # Correct the data
     df['Drift_correct']=0
     for i in xrange(len(instrument_dates)):
-        dt_tm_start=instrument_dates[i][0]+' '+instrument_times[i][0]
-        dt_tm_end=instrument_dates[i][1]+' '+instrument_times[i][1]
-        df['Drift_correct'].ix[dt_tm_start:dt_tm_end]=(np.arange(len(df.ix[dt_tm_start:dt_tm_end]))
+        dt_tm_start=instrument_dates[i][0]
+        dt_tm_end=instrument_dates[i][1]
+        df['Drift_correct'].ix[dt_tm_start:dt_tm_end]=(np.arange(len(df.loc[dt_tm_start:dt_tm_end]))
                 	 					       *(-params[i][0]/720)-(params[i][1]-CO2_base))
 
     for j in CO2_cols_list:
@@ -132,7 +132,7 @@ def correct_data():
     df=df.reindex_axis(all_cols_list,axis=1)
     
     # Output the data	
-    df.to_pickle(os.path.join(path,'profile_corrected.df'))
+    df.to_csv(os.path.join(path,'Whroo_profile_IRGA_corrected.csv'),sep=',',index_label='DATETIME')
 
 def correctTa_data():
 	
