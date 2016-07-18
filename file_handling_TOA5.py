@@ -16,9 +16,10 @@ def cut_raw_file_into_daily_steps():
     """
     
     def filename(siteString,dateString):
-        dateObj = dt.strptime(dateString,'%Y-%m-%d')
+        dateObj = dt.strptime(dateString,'%Y-%m-%d %H:%M')
         filenameString = (siteString + '_' + '10Hz' + '_' + dateObj.strftime('%Y')
-                          + '_' + dateObj.strftime('%j') + '.txt')
+                          + '_' + dateObj.strftime('%j') + '_' + dateObj.strftime('%H')
+                          + dateObj.strftime('%M') + '.txt')
         return filenameString
         
     def datareport(filename,recs_avail):
@@ -56,18 +57,18 @@ def cut_raw_file_into_daily_steps():
             else:
                 numrecsCounter=numrecsCounter+1
                 line=line.split(',')            
-                startdateString=line[0][1:11]
+                startdateString=line[0][1:17]
                 del(line[1])
                 line=','.join(line)
                 if counter==5:
-                   prevdateString=startdateString
-                   sub_header=header_lst[1].split(',')
-                   del(sub_header[1])
-                   header_lst[1]=','.join(sub_header)
-                if startdateString==prevdateString:
+                    prevdateString=startdateString
+                    sub_header=header_lst[1].split(',')
+                    del(sub_header[1])
+                    header_lst[1]=','.join(sub_header)
+                if startdateString[:10]==prevdateString[:10]:
                     data_lst.append(line)
                 else:
-                    filenameString=filename('Whroo',startdateString)
+                    filenameString=filename('Whroo',prevdateString)
                     fileoutObj = open(os.path.join(outpath,filenameString),'w')
                     fileoutObj.writelines(header_lst[1:3])
                     fileoutObj.writelines(data_lst)
@@ -76,6 +77,7 @@ def cut_raw_file_into_daily_steps():
                     numrecsCounter=0
                     prevdateString=startdateString
                     data_lst=[]
+                    data_lst.append(line)
     
     logfileObj.close()
 
