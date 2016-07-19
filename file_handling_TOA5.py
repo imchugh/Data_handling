@@ -3,6 +3,7 @@
 
 import pdb
 import os
+import calendar
 from datetime import datetime as dt
 
 def cut_raw_file_into_daily_steps():
@@ -81,6 +82,21 @@ def cut_raw_file_into_daily_steps():
     
     logfileObj.close()
 
+def kill_dupes(target_dir, target_file):
+    
+    with open(os.path.join(target_dir, target_file)) as old_fobj:
+        this_set = set()
+        unique_list = []
+        for line in old_fobj:
+            if line not in this_set:
+                this_set.add(line)
+                unique_list.append(line)
+    
+    split_file_name = os.path.splitext(target_file)
+    new_file_name = split_file_name[0] + '_no_dupes' + split_file_name[1]
+    with open(os.path.join(target_dir, new_file_name), 'w') as new_fobj:
+        new_fobj.writelines(unique_list)
+
 def rewrite_irregular_10Hz():
 
     """
@@ -99,7 +115,7 @@ def rewrite_irregular_10Hz():
     
     def filename(siteString,dateString,modInt):
         dateObj = dt.strptime(dateString,'%Y-%m-%d')
-        dateObj = dateObj + timedelta(days=modInt)
+        dateObj = dateObj + dt.timedelta(days=modInt)
         filenameString = (siteString + '_' + '10Hz' + '_' + dateObj.strftime('%Y')
                           + '_' + dateObj.strftime('%j') + '.txt')
         return filenameString
@@ -204,5 +220,56 @@ def rewrite_irregular_10Hz():
         if dataFile == dirList[-1]:
             datareport(filenameString,numrecsInt)
             fileoutObj.close()
-            logfileObj.close()
-        
+            logfileObj.close()       
+
+def run_data_report(target_dir, header_len, exp_records):
+    
+    # Get data and sort
+    all_files_list = os.listdir(target_dir)
+    data_files_list = [f for f in all_files_list if len(f) == 28]
+    data_files_list.sort()
+    
+    # Check for multiple years and raise exception if so
+    site_list = []
+    year_list = []
+    days_list = []
+    for f in data_files_list:
+        this_list = f.split('_')
+        site_list.append(this_list[0])
+        year_list.append(this_list[2])
+        days_list.append(int(this_list[3]))
+    site_list = list(set(site_list))
+    if not len(site_list) == 1:
+        raise Exception('Target directory must contain only files from a single ' \
+                        'site - aborting!')
+    year_list = list(set(year_list))
+    if not len(year_list) == 1:
+        raise Exception('Target directory must contain only files from a single ' \
+                        'year - aborting!')
+    
+    # Compare number of days to number of expected days
+    exp_days = 366 if calendar.isleap(int(year_list[0])) else 365
+    exp_days_list = range(1, exp_days + 1)
+    diff_list = [d for d in exp_days_list if not d in days_list]
+    string_list = []
+    for this_day in diff_list:
+        this_str = (site_list[0] + '_10Hz_' + year_list[0] + '_' + 
+                    str(this_day).zfill(3) + '_0000.txt,0,0.0\n')
+        string_list.append(this_str)
+    
+    # Check number of records and report
+    print 'Processing file: '
+    for f in data_files_list:
+        with open(os.path.join(target_dir, f), 'r') as fileObj:
+            for i, line in enumerate(fileObj):
+                pass
+            i = i - (header_len - 1)
+            this_str = (f + ',' + str(i) + ',' + str(round(float(i) / exp_records * 
+                        100)) + '\n')
+            string_list.append(this_str)
+            print '    ' + f
+    string_list.sort()
+            
+    with open(os.path.join(target_dir, 'new_data_report.txt'), 'w') as logfileObj:
+        logfileObj.write('File, # records found, % records available\n')
+        logfileObj.writelines(string_list)
